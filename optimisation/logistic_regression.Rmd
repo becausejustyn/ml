@@ -1,0 +1,322 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+library(data.table)
+library(magrittr)
+library(caret)
+library(optimx)
+```
+
+```{r}
+ex2data1 <- fread("~/Downloads/sort_newest/r/archives_sort_this/Andrew_Machine_Learning_R_optimisation/ex2data1.txt", col.names = c("Exam1", "Exam2", "Label"))    
+head(ex2data1) 
+```
+
+```{r}
+cols <- c("0" = "red", "1" = "blue")
+
+ex2data1 %>% 
+  ggplot(aes(
+    x = Exam1,
+    y = Exam2,
+    colour = factor(Label)
+    )) +
+  geom_point(size = 4, shape = 19, alpha = 0.6) +
+  scale_colour_manual(values = cols,labels = c("Not admitted", "Admitted"), name = "Admission Status")
+```
+
+Logistic Regression hypothesis is defined as:
+
+$$h_\theta(x)=g(\theta^Tx)$$ where function g is the sigmoid function, which is defined as below:
+$$g(z)=\frac{1}{1+e^{-z}}$$
+
+```{r}
+my_sigmoid <- function(z) 1/(1+exp(-z))
+```
+
+```{r}
+my_sigmoid(c(0, 10^10, -10^10))
+```
+
+```{r}
+tibble(
+  x = seq(-10, 10, by = 0.1),
+  y = my_sigmoid(x)
+) %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_line(size = 1.5, colour = "#112446") +
+  theme_minimal() +
+  geom_vline(xintercept = 0, colour = "grey", linetype = 2) +
+  geom_hline(yintercept = 0.5, colour = "grey", linetype = 2) +
+  labs(
+    x = "", y = "",
+    title = "Sigmoid function (Logistic curve)"
+  )
+```
+
+### Cost function and gradient
+
+The cost function in logistic regression is given by:
+
+
+$$ J(\theta)=\frac{1}{m}\sum\limits_{i=1}^{m}[-y^{(i)}log(h_\theta(x^{(i)}))-(1-y^{(i)})log(1-h_\theta(x^{(i)}))] $$
+
+and the gradient of the cost is a vector of the same length as $\theta$ where the $j^{th}$ element (for j = 0, 1, ..., n) is defined as follows:
+
+$$\frac{\partial J(\theta)}{\partial \theta_j}  = \frac{1}{m}\sum\limits_{i=1}^{m}(h_\theta(x^{(i)})-y^{(i)})x_j^{(i)} $$
+
+Note that while this gradient looks identical to the linear regression gradient, the formula is actually different because linear and logistic regression have different definitions of $h_\theta(x)$.
+
+Add ones for the intercept term:
+
+```{r}
+y <- ex2data1$Label
+X <- cbind(1, ex2data1$Exam1, ex2data1$Exam2)
+head(X)
+```
+
+```{r}
+# Initialize fitting parameters:
+initial_theta <- matrix(rep(0, ncol(X)))
+
+# The function below calculates cost.
+my_cost <- function(theta, X, y) {
+  cost_gradient <- list()
+  # cost_and_gradient compute cost and gradient for logistic regression using theta
+  h_theta <- my_sigmoid(X %*% theta)
+  cost <- 1 / nrow(X) * sum(-y * log(h_theta) - (1 - y) * log(1 - h_theta))
+  return(cost)
+}
+
+# What is the cost for the initial theta parameters, which are all zeros?
+round(my_cost(initial_theta, X, y), 3)
+```
+
+The function below calculates gradient.
+
+```{r}
+my_gradient <- function(theta, X, y) {
+  h_theta <- my_sigmoid(X %*% theta)
+
+  ## OPTION 1-- looping
+
+  #    gradient=rep(0,ncol(X))
+  #      for(j in 1:ncol(X)){
+  #       for(i in 1:nrow(X)){
+  #    gradient[j]=gradient[j]+1/nrow(X)*(my_sigmoid(X[i,]%*%theta)-y[i])*X[i,j]
+  #                   }
+  #               }
+
+  # option2-more succint
+  gradient <- 1 / nrow(X) * (my_sigmoid(t(theta) %*% t(X)) - t(y)) %*% X
+  return(gradient)
+}
+```
+
+```{r}
+#The gradient for the initial theta parameters, which are all zeros, is shown below
+round(my_gradient(initial_theta, X, y),3)
+```
+
+#### General-purpose Optimization in lieu of Gradient Descent
+
+We can use gradient descent to get the optimal theta values but using optimazation libraries converges quicker. So, let's use the **optim** general-purpose Optimization in R to get the required theta values and the associated cost.
+
+```{r}
+optimized=optim(par=initial_theta,X=X,y=y,fn=my_cost,gr=my_gradient)
+
+names(optimized)
+```
+
+```{r}
+cat("The optimized theta values are: ")
+round(optimized$par,3)
+```
+
+```{r}
+cat('The cost at the final theta values is: ')
+round(optimized$value,3)
+```
+
+#### Decision Boundary
+
+Now, let's plot the decision bounday
+Only 2 points are required to define a line, so let's choose two endpoints.
+
+```{r}
+plot_x = c(min(ex2data1$Exam1)-2,max(ex2data1$Exam1)+2)
+
+# Calculate the decision boundary line
+plot_y = (-1/optimized$par[3])*(optimized$par[2]*plot_x+optimized$par[1])
+
+## Calculate slope and intercept
+slope =(plot_y[2]-plot_y[1])/(plot_x[2]-plot_x[1])
+intercept=plot_y[2]-slope*plot_x[2]
+
+cols <- c("0" = "red","1" = "blue")
+ex2data1%>%ggplot(aes(x=Exam1,y=Exam2,color=factor(Label)))+geom_point(size = 4, shape = 19,alpha=0.6)+
+scale_colour_manual(values = cols,labels = c("Not admitted", "Admitted"),name="Admission Status")+
+geom_abline(intercept = intercept, slope = slope,col="purple",show.legend=TRUE)
+```
+
+```{r}
+round(my_sigmoid(c(1,45,85)%*%optimized$par),3)
+```
+
+```{r}
+ex2data1$fitted_result=my_sigmoid(X%*%optimized$par)
+ex2data1$fitted_result_label=ifelse(ex2data1$fitted_result>=0.5,1,0)
+head(ex2data1)
+```
+
+```{r}
+accuracy=sum(ex2data1$Label==ex2data1$fitted_result_label)/(nrow(ex2data1))
+accuracy
+```
+
+```{r}
+ex2data2 <- fread("ex2data2.txt",col.names=c("Test1","Test2","Label"))    
+head(ex2data2) 
+```
+
+```{r}
+cols <- c("0" = "red","1" = "blue")
+ex2data2%>%ggplot(aes(x=Test1,y=Test2,color=factor(Label)))+geom_point(size = 4, shape = 19,alpha=0.6)+
+scale_colour_manual(values = cols,labels = c("Failed", "Passed"),name="Test Result")
+```
+
+```{r}
+new_data=c()
+
+for(i in 1:6){
+    for(j in 0:i){
+        temp= (ex2data2$Test1)^i+(ex2data2$Test2)^(i-j)
+        new_data=cbind(new_data,temp)
+    }
+}
+    
+colnames(new_data)=paste0("V",1:ncol(new_data))
+```
+
+```{r}
+head(new_data)
+```
+
+```{r}
+y=ex2data2$Label
+X=new_data
+```
+
+```{r}
+my_cost2=function(theta, X, y,lambda){
+    cost_gradient=list()
+    # cost_and_gradient compute cost and gradient for logistic regression using theta
+    h_theta= my_sigmoid(X%*%theta)
+    cost= 1/nrow(X)*sum(-y*log(h_theta)-(1-y)*log(1-h_theta))+lambda/(2*nrow(X))*sum(theta^2)
+    return(cost)
+}
+
+my_gradient2=function(theta, X, y,lambda){
+    
+    h_theta= my_sigmoid(X%*%theta)
+    
+    ## OPTION 1-- looping
+    
+       gradient=rep(0,ncol(X))
+    
+      for(j in 2:ncol(X)){
+        for(i in 1:nrow(X)){
+        gradient[1]=gradient[1]+1/nrow(X)*(my_sigmoid(X[i,]%*%theta)-y[i])*X[i,1]
+        gradient[j]=gradient[j]+1/nrow(X)*(my_sigmoid(X[i,]%*%theta)-y[i])*X[i,j]+lambda/(nrow(X))*theta[j]
+                       }
+                   }
+    
+    # option2-more succint
+  # gradient= 1/nrow(X)*(my_sigmoid(t(theta)%*%t(X))-t(y))%*%X+(lambda/(nrow(X)))*c(0,theta[-1])
+    return(gradient)                                                                           
+}
+```
+
+```{r}
+initial_theta =matrix(rep(0,ncol(X)))
+
+round(my_cost2(initial_theta,X,y,lambda=10),3)
+```
+
+```{r}
+optimized=optim(par=initial_theta,X=X,y=y,lambda=1,fn=my_cost2,gr=my_gradient2,method="BFGS")
+
+optimized=(par=initial_theta,X=X,y=y,lambda=1,fn=my_cost2,gr=my_gradient2,method="BFGS")
+
+matrix(as.vector(optimized$par),ncol=9)
+```
+
+```{r}
+ex2data2$fitted_result=my_sigmoid(X%*%optimized$par)
+```
+
+```{r}
+head(ex2data2)
+```
+
+```{r}
+ex2data2$fitted_result_label=ifelse(ex2data2$fitted_result>=0.5,1,0)
+head(ex2data2,10)
+```
+
+### Evaluating the fit
+
+Let's calculate `F1 score`, which uses `precision` and `recall`. `Precision` and `rcall` in turn are calculated using `true positive`, `false positive` and `false negative` as defined below. We will also see the model accuracy.
+
+**tp** is the number of true positives: the ground truth label says it's an
+anomaly and our algorithm correctly classied it as an anomaly.
+
+ **fp** is the number of false positives: the ground truth label says it's not
+an anomaly, but our algorithm incorrectly classied it as an anomaly.
+
+ **fn** is the number of false negatives: the ground truth label says it's an
+anomaly, but our algorithm incorrectly classied it as not being anoma-
+lous.
+
+
+The F1 score is computed using precision (prec) and recall (rec):
+
+$$prec = \frac{tp}{tp+fp}$$
+
+$$rec = \frac{tp}{tp+fn}$$
+
+$$F1 = 2.\frac{prec.rec}{prec+rec}$$
+
+```{r}
+tp=sum((ex2data2$Label==1)&(ex2data2$fitted_result_label==1))
+fp=sum((ex2data2$Label==0)&(ex2data2$fitted_result_label==1))
+prec=tp/(tp+fp)
+cat("The precision is:")
+round(prec,3)
+```
+
+```{r}
+tp=sum((ex2data2$Label==1)&(ex2data2$fitted_result_label==1))
+fn=sum((ex2data2$Label==1)&(ex2data2$fitted_result_label==0))
+rec=tp/(tp+fn)
+cat("The recall is:")
+round(rec,3)
+```
+
+```{r}
+F1=2*(prec*rec)/(prec+rec)
+cat("The F1 score is:")
+round(F1,3)
+```
+
+```{r}
+accuracy=sum(ex2data2$Label==ex2data2$fitted_result_label)/nrow(ex2data2)
+
+cat("The accuracy is: ")
+round(accuracy,3)
+```
+

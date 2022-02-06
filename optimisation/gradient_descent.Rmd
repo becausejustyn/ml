@@ -1,0 +1,532 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Gradient Descent
+
+```{r}
+#https://thatdatatho.com/introduction-gradient-descent-line-search/
+
+#https://thatdatatho.com/gradient-descent-line-search-linear-regression/
+#this one you haven't touched yet
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+# objective function
+fun <- function(x) x^2
+
+# initialize iteration
+k <- 0
+
+# initial guess
+x <- 5
+
+# gradient of objective function at x
+grad <- 2 * x
+
+# initialize vector to hold all x
+points <- c()
+points[1] <- x
+
+# initialize counter
+i <- 2
+```
+
+```{r}
+# start gradient descent algorithm
+while (norm(grad, "2") > 10^-4) {
+
+  # constant step length alpha
+  alpha <- 0.05
+  # gradient of objective function
+  grad <- 2 * x
+  # search direction
+  p <- -grad
+  # update x until objective funtion value is minimized
+  x <- x + alpha * p
+  # keep track of values of x
+  points[i] <- x
+  # iterations counter
+  k <- k + 1
+  # counter for x
+  i <- i + 1
+}
+```
+
+```{r}
+# create data frame
+data_points <- data.frame(x = points, y = fun(points))
+
+# plot objective function with all x
+small_step_length <- ggplot(data.frame(x = c(-5, 5)), aes(x)) +
+  stat_function(fun = fun) +
+  geom_line(data = data_points, aes(x = x, y = y), col = "blue") +
+  geom_point(data = data_points, aes(x = x, y = y), col = "red") +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15),
+    plot.title = element_text(hjust = 0.5, size = 18)
+  ) +
+  labs(
+    y = expression(x^2),
+    title = bquote(atop("Gradient Descent for" ~ x^2, "With Step Length 0.05 and k = 111"))
+  )
+```
+
+```{r}
+# initialize iteration
+k <- 0
+# initial guess
+x <- 5
+# gradient of objective function at x
+grad <- 2 * x
+# initialize vector to hold all x
+points <- c()
+points[1] <- x
+# initialize counter
+i <- 2
+```
+
+```{r}
+# start gradient descent algorithm
+while (norm(grad, "2") > 10^-4) {
+  # constant step length alpha
+  alpha <- 0.7
+  # gradient of objective function
+  grad <- 2 * x
+  # search direction
+  p <- -grad
+  # update x until objective function value is minimized
+  x <- x + alpha * p
+  # keep track of values of x
+  points[i] <- x
+  # iterations counter
+  k <- k + 1
+  # counter for x
+  i <- i + 1
+}
+```
+
+```{r}
+# create data frame
+data_points <- data.frame(x = points, y = fun(points))
+
+big_step_length <- ggplot(data.frame(x = c(-5, 5)), aes(x)) +
+  stat_function(fun = fun) +
+  geom_line(data = data_points, aes(x = x, y = y), col = "blue") +
+  geom_point(data = data_points, aes(x = x, y = y), col = "red") +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15),
+    plot.title = element_text(hjust = 0.5, size = 18)
+  ) +
+  labs(
+    y = expression(x^2),
+    title = bquote(atop("Gradient Descent for" ~ x^2, "With Step Length 0.7 and k = 14"))
+  )
+```
+
+```{r}
+cowplot::plot_grid(small_step_length, big_step_length)
+```
+
+
+```{r}
+# objective function
+fun <- function(x) x^2
+# initialization of iterations
+k <- 0
+# initial guess
+x <- 5
+# gradient at point x
+grad <- 2 * x
+# search direction
+p <- -grad
+# initialize vector to hold all x
+points <- c()
+points[1] <- x
+# initialize counter
+i <- 2
+# set c for Armijo condition
+c <- 0.9
+# set roh for backtracking algorithm
+roh <- 0.95
+
+while (norm(grad, "2") > 10^-4) {
+  # set alpha to 1 every time we enter the while loop
+  # and cacluate the new alpha for each iteration
+  alpha <- 1
+  # Armijo condition in while loop
+  while (fun(x + alpha * p) > fun(x) + c * alpha * grad * p) {
+    alpha <- roh * alpha
+  }
+  grad <- 2 * x
+  p <- -grad
+  x <- x + alpha * p
+  points[i] <- x
+  # update iteration
+  k <- k + 1
+  # update counter
+  i <- i + 1
+}
+```
+
+```{r}
+data_points <- data.frame(x = points, y = fun(points))
+
+ggplot(data.frame(x = c(-5, 5)), aes(x)) +
+  stat_function(fun = fun) +
+  geom_line(data = data_points, aes(x = x, y = y), col = "blue") +
+  geom_point(data = data_points, aes(x = x, y = y), col = "red") +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15),
+    plot.title = element_text(hjust = 0.5, size = 18)
+  ) +
+  labs(
+    y = expression(x^2),
+    title = bquote(atop("Gradient Descent for" ~ x^2, "With Backtracking Line Search and k = 104"))
+  ) 
+```
+
+If we have no idea where to start with a guess about the step length, the line search backtracking algorithm chooses appropriate ones. Another advantage is that this algorithm is very easy to implement in code.
+
+```{r}
+# objective function
+fun <- function(x) x^2
+# initialize iterations
+k <- 0
+# initial guess
+x <- 5
+# gradient at point x
+grad <- 2 * x
+# search direction
+p <- -grad
+points <- c()
+points[1] <- x
+i <- 2
+```
+
+```{r}
+while (norm(grad, "2") > 10^-4) {
+  # solve for alpha
+  alpha <- solve(p, -x)
+  # gradient at x
+  grad <- 2 * x
+  # search direction
+  p <- -grad
+  # update x
+  x <- x + alpha * p
+  # all x
+  points[i] <- x
+  # iterations
+  k <- k + 1
+  i <- i + 1
+}
+```
+
+```{r}
+data_points <- data.frame(x = points, y = fun(points))
+
+ggplot(data.frame(x = c(-5, 5)), aes(x)) +
+  stat_function(fun = fun) +
+  geom_line(data = data_points, aes(x = x, y = y), col = "blue") +
+  geom_point(data = data_points, aes(x = x, y = y), col = "red") +
+  theme_minimal() +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 15),
+    plot.title = element_text(hjust = 0.5, size = 18)
+  ) +
+  labs(
+    y = expression(x^2),
+    title = bquote(atop("Gradient Descent for" ~ x^2, "With Exact Step Length and k = 2"))
+  )
+```
+
+## Gradient Descent and Line Search Methods for Linear Regression
+
+```{r}
+library(ggpubr)
+library(gapminder)
+```
+
+
+```{r}
+# response variable Y (life expectancy)
+Y <- matrix(pull(gapminder, lifeExp), nrow = nrow(gapminder), ncol = 1)
+
+# setting up our design matrix x
+gap <- gapminder %>%
+  tidyr::spread(key = continent, value = continent) %>%
+  mutate(across(c(Oceania, Americas, Asia, Europe), ~ (ifelse(is.na(.), 0, 1)))) %>%
+  dplyr::select(Americas, Asia, Europe, Oceania) %>%
+  data.matrix()
+
+# setting up our design matrix
+x <- gapminder %>%
+  dplyr::select(pop, gdpPercap) %>%
+  data.matrix() %>%
+  scale() %>%
+  cbind(rep(1, nrow(.)), ., gap) %>%
+  magrittr::set_colnames(c("Intercept", colnames(.[, -1]))) 
+
+head(x)
+```
+
+```{r}
+# initial guess for beta
+beta_coefficients <- list(
+  beta_0 = 0,
+  beta_1 = 0,
+  beta_2 = 0,
+  beta_3 = 0,
+  beta_4 = 0,
+  beta_5 = 0,
+  beta_6 = 0
+)
+
+step_length <- 0.0005
+
+beta_vector <- do.call(rbind, beta_coefficients) %>%
+  magrittr::set_rownames(colnames(x))
+
+# gradient of objective function at beta
+grad <- -t(x) %*% (Y - x %*% beta_vector)
+
+# initialize iterations
+k <- 0
+```
+
+```{r}
+while (norm(grad) > 10^-4) {
+  # objective functio value at beta
+  obj_fun <- 0.5 * t((Y - x %*% beta_vector)) %*% (Y - x %*% beta_vector)
+  # gradient of objective function value at beta
+  grad <- -t(x) %*% (Y - x %*% beta_vector)
+  # search direction alpha
+  search_direction <- -grad
+  # update beta coefficients
+  beta_vector <- beta_vector + step_length * search_direction
+  # update iterations
+  k <- k + 1
+}
+```
+
+```{r}
+# prepare data
+dat <- as.data.frame(scale(gapminder[, c("pop", "gdpPercap")])) %>%
+  cbind(gapminder[, c("lifeExp", "continent")])
+
+# fit regression model
+lm_summary <- summary(lm(lifeExp ~ pop + gdpPercap + continent, data = dat))
+coefs <- lm_summary$coefficients[, 1] %>%
+  base::unname() %>%
+  round(5)
+
+beta_vector <- beta_vector %>%
+  base::unname() %>%
+  c() %>%
+  round(5)
+
+# compare gradient descent with base R lm() function
+all.equal(beta_vector, coefs)
+```
+
+```{r}
+# print iterations
+k
+```
+
+### Simple Linear Regression to Visualize Gradient Descent
+
+```{r}
+# response variable Y (life expectancy)
+Y <- matrix(log(pull(gapminder, lifeExp)), nrow = nrow(gapminder), ncol = 1)
+
+# setting up our design matrix
+x <- gapminder %>%
+  dplyr::select(pop) %>%
+  dplyr::mutate(pop = log(pop)) %>%
+  data.matrix() %>%
+  scale() %>%
+  cbind(rep(1, nrow(.)), .)
+
+# initial guess for beta
+beta_coefficients <- list(
+  beta_0 = 0,
+  beta_1 = 0
+)
+
+step_length <- 0.0005
+beta_vector <- do.call(rbind, beta_coefficients)
+
+# gradient of objective function at beta
+grad <- -t(x) %*% (Y - x %*% beta_vector)
+
+# initialize iterations
+k <- 0
+```
+
+```{r}
+while (norm(grad) > 10^-4) {
+    # plot data
+    plot(x[, "pop"], Y,
+    main = "Gradient Descent With Fixed Step Length \n and 11 Iterations",
+    xlab = "Population",
+    ylab = "Life Expectancy"
+  )
+  # add updated regression line after each iteration
+  abline(beta_vector[1, 1], beta_vector[2, 1], col = "red")
+  par(new = T)
+  # objective functio value at beta
+  obj_fun <- 0.5 * t((Y - x %*% beta_vector)) %*% (Y - x %*% beta_vector)
+  # gradient of objective function value at beta
+  grad <- -t(x) %*% (Y - x %*% beta_vector)
+  # search direction alpha
+  search_direction <- -grad
+  # update beta coefficients
+  beta_vector <- beta_vector + step_length * search_direction
+  # update iterations
+  k <- k + 1
+}
+```
+
+```{r}
+k
+```
+
+### Gradient Descent With Exact Step Length
+
+```{r}
+# response variable Y (life expectancy)
+Y <- matrix(pull(gapminder, lifeExp), nrow = nrow(gapminder), ncol = 1)
+
+# setting up our design matrix x
+gap <- gapminder %>%
+  tidyr::spread(key = continent, value = continent) %>%
+  mutate(across(c(Oceania, Americas, Asia, Europe), ~ (ifelse(is.na(.), 0, 1)))) %>%
+  dplyr::select(Americas, Asia, Europe, Oceania) %>%
+  data.matrix() 
+
+# setting up our design matrix
+x <- gapminder %>%
+  dplyr::select(pop, gdpPercap) %>%
+  base::scale() %>%
+  data.matrix() %>%
+  cbind(rep(1, nrow(.)), ., gap) %>%
+  magrittr::set_colnames(c("Intercept", colnames(.[, -1])))
+
+# initial guess for beta
+beta_coefficients <- list(
+  beta_0 = 0,
+  beta_1 = 0,
+  beta_2 = 0,
+  beta_3 = 0,
+  beta_4 = 0,
+  beta_5 = 0,
+  beta_6 = 0
+)
+
+beta_vector <- do.call(rbind, beta_coefficients) %>%
+  magrittr::set_rownames(colnames(x))
+
+# gradient of objective function value
+grad <- -t(x) %*% (Y - x %*% beta_vector)
+
+# initialize iteration
+k <- 0
+```
+
+
+```{r}
+while (norm(grad) > 10^-4) {
+  # objective function value at beta
+  obj_fun <- 0.5 * t((Y - x %*% beta_vector)) %*% (Y - x %*% beta_vector)
+  # gradient of objective function at beta
+  grad <- -t(x) %*% (Y - x %*% beta_vector)
+  # search direction alpha
+  search_direction <- -grad
+  # calculation of exact step length at each iteration k
+  step_length <- (t(grad) %*% grad) / (t(grad) %*% (t(x) %*% x) %*% grad)
+  step_length <- c(step_length)
+  # updating beta values
+  beta_vector <- beta_vector + step_length * search_direction
+  # updating iteration
+  k <- k + 1
+}
+
+# print iterations
+k
+```
+
+### Gradient Descent With Backtracking Line Search
+
+```{r}
+# initial guess for beta
+beta_coefficients <- list(
+  beta_0 = 0,
+  beta_1 = 0,
+  beta_2 = 0,
+  beta_3 = 0,
+  beta_4 = 0,
+  beta_5 = 0,
+  beta_6 = 0
+)
+
+beta_vector <- do.call(rbind, beta_coefficients) %>%
+  magrittr::set_rownames(colnames(x))
+
+# for Armijo inequality
+c <- 0.9
+rho <- 0.95
+# gradient of objective function value
+grad <- -t(x) %*% (Y - x %*% beta_vector)
+# search direction
+search_direction <- -grad
+# objective function value at beta
+obj_fun <- 0.5 * t((Y - x %*% beta_vector)) %*% (Y - x %*% beta_vector)
+# initialize iteration
+k <- 0
+```
+
+```{r}
+while (norm(grad) > 10^-4) {
+  # reset step length to 1 before entering loop 
+  step_length <- 1
+  # left hand side of Armijo inequality
+  lhs <- 0.5 * t((Y - x %*% (beta_vector + step_length * search_direction))) %*% (Y - x %*% (beta_vector + step_length * search_direction))
+  # right hand side of Armijo inequality
+  rhs <- obj_fun + c * step_length %*% t(grad) %*% search_direction
+  # new calculation of alpha with backtracking method
+  while (lhs > rhs) {
+    step_length <- rho * step_length
+    # update Armijo inequality
+    lhs <- 0.5 * t((Y - x %*% (beta_vector + step_length * search_direction))) %*% (Y - x %*% (beta_vector + step_length * search_direction))
+    rhs <- obj_fun + c * step_length %*% t(grad) %*% search_direction
+  }
+  # objective function value at beta
+  obj_fun <- 0.5 * t((Y - x %*% beta_vector)) %*% (Y - x %*% beta_vector)
+  # gradient of objective function at beta
+  grad <- -t(x) %*% (Y - x %*% beta_vector)
+  # search direction alpha
+  search_direction <- -grad
+  # updating beta values
+  beta_vector <- beta_vector + step_length * search_direction
+  # updating iteration
+  k <- k + 1
+}
+
+# print iterations
+k
+```
+
