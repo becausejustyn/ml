@@ -1,0 +1,327 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+Likelihood
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+options(scipen = 999, digits = 2)
+```
+
+
+### A Real Likelihood “Function”
+
+```{r}
+pois_likelihood <- function(y, lambda){
+  # Data Generating Process
+  y_hat <- lambda
+  #likelihood function
+  sum(dpois(y, lambda = y_hat, log = TRUE))
+  #sum makes the function scalable
+}
+```
+
+
+## Likelihood of a Dataset
+
+### Integrating Likelihood over Many Data Points
+
+`prod()` for likelihood, `sum()` for log-likelihood
+Density functions don’t take kindly to a vector of data and a vector of parameters, we’ll use `rowwise()` to iterate over rows, but `ungroup()` after for other operations. 
+
+Let’s try this for a random dataset that we generate from a Poisson distribution with a lambda of 10.
+
+```{r}
+set.seed(2017)
+pois_data <- rpois(10, lambda = 10)
+
+pois_mle <- data.frame(lambda_vals = 0:20) %>%
+  rowwise() %>%
+  mutate(log_likelihood = pois_likelihood(y = pois_data, lambda = lambda_vals)) %>%
+  ungroup()
+
+#Plot the surface
+qplot(lambda_vals, log_likelihood, data=pois_mle)
+```
+
+MLE
+```{r}
+pois_mle %>%
+  filter(log_likelihood == max(log_likelihood))
+```
+
+
+`https://biol607.github.io/lab/07_likelihood.html`
+
+## Introduction to Maximum Likelihood Estimation in R – Part 1
+
+`https://cmdlinetips.com/2019/03/introduction-to-maximum-likelihood-estimation-in-r/`
+
+
+### Why computing Log-Likelihood is better?
+The above example shows that for our single data point the likelihood is the highest when lambda=2. Typically we are interested in computing the likelihood for our all of our observed data i.e. multiple data points. Computing the complete likelihood function for all the data involves multiplying likelihood of each single data point.
+
+If we look at the above likelihood plot for the single data point, we can see that a lot of the likelihoods are pretty close to zero. What this means is that, while computing the likelihood of observed data, we might often end up multiplying really small (close to zero) likelihood. It will lead to hitting floating point underflow type errors.
+
+Don’t panic, there is a brilliant solution. You might have guessed it. We can work with log-space. By working with log-likelihood, we can convert the multiplication to addition and we would not have worry about reaching computing precision.
+
+It is pretty straightforward to compute log-likelihood for a single data point in R. The dpois function we used earlier has an argument log and we can set it log=TRUE to get log-likelihood.
+
+```{r}
+# compute log-likelihood of single data point
+log_likelihood <- dpois(pois_data[1], lambda = seq(20), log = TRUE)
+# log likelihood in data frame
+llh_single <- data.frame(x = seq(20), log_like = log_likelihood)
+```
+
+```{r}
+llh_single %>% 
+  ggplot(aes(
+    x = x,
+    y = log_like
+    )) +
+  geom_point(size = 4, coloUr = "dodgerblue") +
+  labs(
+    x = "Lambda",
+    y = "Log Likelihood",
+    title = "Log-Likelihood of a single data point"
+  ) +
+  theme_bw(base_size = 16) 
+```
+
+### Computing Likelihood for Observed Data
+
+```{r}
+llh_poisson <- function(lambda, y){
+  # log(likelihood) by summing 
+  llh <- sum(dpois(y, lambda, log=TRUE))
+  return(llh)
+}
+
+lambdas <- seq(1, 100, by = 1)
+
+# compute log-likelihood for all lambda values
+ll <- sapply(lambdas, function(x){llh_poisson(x, pois_data)})
+
+df <- data.frame(
+  ll = ll, 
+  lambda = lambdas)
+```
+
+We can simply plot the log-likelihood versus lambda and pick the lambda for which the Likelihood is the highest.
+
+```{r}
+qplot(lambda_vals, log_likelihood, data = pois_mle)
+```
+
+```{r}
+df %>% 
+  ggplot(aes(
+    x = lambda,
+    y = ll
+    ))+
+  geom_point(size = 1.5, colour = "dodgerblue") +
+  labs(
+    x = "Lambda",
+    y = "Log Likelihood"
+  ) +
+  theme_bw(base_size = 16) +
+  geom_vline(xintercept = lambdas[which.max(ll)], color = "red", size = 1.5)
+```
+
+### How to Estimate a Single Parameter using MLE
+
+```{r}
+library(stats4)
+data <- rpois(n = 100, lambda = 5)
+lambdas <- seq(1, 15, by = 0.5)
+# function to compute log likelihood 
+# for Poisson distribution
+llh_poisson <- function(lambda, y){
+  # log(likelihood) by summing 
+  llh <- sum(dpois(y, lambda, log = TRUE))
+  return(llh)
+}
+
+nLL <- function(lambda) sum(stats::dpois(y, lambda, log = TRUE))
+fit0 <- mle(nLL, start = list(lambda = 1), nobs = NROW(y))
+```
+
+
+### How To Use Maximum Likelihood Estimation in R for Normal/Gaussian Distribution?
+
+```{r}
+# set seed for random numbers
+set.seed(42)
+# simulate data from Normal distribution
+x <- rnorm(200, mean=2, sd=2)
+data.frame(x=x) %>%
+  ggplot(aes(x=x))+ 
+  geom_histogram(bins=30, color="blue",fill="dodgerblue") + 
+  theme_bw(base_size = 16) + 
+  xlab("Data")
+```
+
+```{r}
+# likelihood function for normal distribution
+# with two unknowns
+neg_log_lik_gaussian <- function(mu,sigma) {
+  -sum(dnorm(x, mean=mu, sd=sigma, log=TRUE))
+}
+```
+
+```{r}
+gaussian_fit <- mle(neg_log_lik_gaussian, 
+          start=list(mu=1, sigma=1), 
+          method="L-BFGS-B")
+
+summary(gaussian_fit)
+```
+
+## Lmao
+
+Likelihood is the probability of a particular set of parameters GIVEN (1) the data, and (2) the data are from a particular distribution (e.g., normal). Symbolically,
+
+Likelihood = P(Parameters | Distribution and Data)
+
+For example, we might ask the question, given the observed data $x = {30, 20, 24, 27}$ come from a normal distribution, what is the likelihood (probability) that the mean is $20$ and the standard deviation is $4$?
+
+$$L(\mu = 20, \sigma = 4 | x)$$
+```{r}
+prod(dnorm(x = c(30, 20, 24, 27), mean = 20, sd = 4))
+```
+
+What is the likelihood (probability) that the data  $x = {30, 20, 24, 27}$ were generated from a normal distribution with a mean of $25$ and standard deviation of $4$?
+
+```{r}
+prod(dnorm(x = c(30, 20, 24, 27), mean = 25, sd = 4))
+```
+
+### Maximum Likelihood
+
+#### Method 1: Grid Search
+
+
+Maximum Likelihood by Grid Search
+
+```{r}
+set.seed(2017)
+
+crossing(
+  mu = seq(from = 10, to = 30, by = 0.1),
+  sigma = seq(from = 0, to = 10, by = 0.1)
+  ) %>%
+  rowwise() %>%
+  mutate(
+    L = prod(dnorm(c(30, 20, 24, 27), mean = mu, sd = sigma))
+    ) %>%
+  arrange(desc(L))
+```
+
+The parameters that maximize the likelihood (in our search space) are a mean of 25.2 and a standard deviation of 3.7.
+
+#### Log-Likelihood
+
+```{r}
+options(scipen = 999, digits = 10)
+```
+
+The likelihood values are quite small since we are multiplying several probabilities together. We could take the natural logarithm of the likelihood to alleviate this issue. So in our example, $L = .00001829129$ and the log-likelihood would be
+```{r}
+log(0.00001829129)
+```
+
+The log-likelihood is the sum of the log-transformed densities. This means we could re-write our grid search syntax to compute the log-likelihood. Since finding the log of the densities is so useful, there is even an argument in `dnorm()` of `log=TRUE` that does this for us. Our revised grid search syntax is:
+```{r}
+crossing(
+  mu = seq(from = 10, to =30, by = 0.1),
+  sigma = seq(from = 0, to = 10, by = 0.1)
+  ) %>%
+  rowwise() %>%
+  mutate(
+    log_L = sum(dnorm(c(30, 20, 24, 27), mean = mu, sd = sigma, log = TRUE))
+    ) %>%
+  arrange(desc(log_L))
+```
+
+#### Maximum Likelihood Estimation for Regression
+
+```{r}
+#https://zief0002.github.io/book-8252/maximum-likelihood-estimation.html#likelihood
+#5.5
+```
+
+## Umm
+
+```{r}
+library(data.table)
+
+ll <- function(b, dt, var) {
+  dt[, sum(dnorm(x = y, mean = b*x, sd = sqrt(var), log = TRUE))]  
+}
+
+test <- data.frame(
+  x = c(1,1,4), 
+  y = c(2.0, 1.8, 6.3))
+
+
+ll(b = 1.8, test, var = 1)
+```
+  
+```{r}
+ll(b = 0.5, test, var = 1)
+```
+  
+```{r}
+library(simstudy)
+
+b <- c(seq(0, 3, length.out = 500))
+truevar = 1
+
+defX <- defData(varname = "x", formula = 0, 
+                variance = 9, dist = "normal")
+
+defA <- defDataAdd(varname = "y", formula = "1.5*x", 
+                   variance = truevar, dist = "normal")
+
+set.seed(21)
+dt <- genData(200, defX)
+dt <- addColumns(defA, dt)
+dt
+```
+  
+```{r}
+loglik <- sapply(b, ll, dt = dt, var = truevar)
+
+bt <- data.table(b, loglike = loglik)
+bt
+```
+  
+```{r}
+maxlik <- dt[, max(loglik)]
+lmfit <- lm(y ~ x - 1, data =dt) # OLS estimate
+
+(maxest <- bt[loglik == maxlik, b]) # value of beta that maxmizes likelihood
+```
+  
+```{r}
+ggplot(data = bt) +
+  scale_y_continuous(name = "Log likelihood") +
+  scale_x_continuous(limits = c(0, 3), 
+                     breaks = seq(0, 3, 0.5),
+                     name = expression(beta)) +
+  theme(panel.grid.minor = element_blank())  +
+  geom_line(aes(x = b, y = loglike), 
+            color = "#a67d17", size = 1) +
+  geom_point(x = maxest, y = maxlik, color = "black", size = 3)
+```
+  
+  
