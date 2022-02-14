@@ -31,10 +31,14 @@ $$
 
 These are the calculations:
 
+<center>
+
 |                  |                     |
 |------------------|---------------------|
 | $2 \times 4 = 8$ | $2 \times 0 = 0$    |
 | $2 \times 1 = 2$ | $2 \times -9 = -18$ |
+
+</center>
 
 We call the number (`2` in this case) a *scalar*, so this is called `scalar multiplication`.
 
