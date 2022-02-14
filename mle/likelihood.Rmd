@@ -9,19 +9,14 @@ Likelihood
 
 ```{r}
 library(tidyverse)
-```
 
-
-```{r}
 options(scipen = 999, digits = 2)
 ```
-
 
 ### A Real Likelihood “Function”
 
 ```{r}
 pois_likelihood <- function(y, lambda){
-  # Data Generating Process
   y_hat <- lambda
   #likelihood function
   sum(dpois(y, lambda = y_hat, log = TRUE))
@@ -43,19 +38,31 @@ Let’s try this for a random dataset that we generate from a Poisson distributi
 set.seed(2017)
 pois_data <- rpois(10, lambda = 10)
 
-pois_mle <- data.frame(lambda_vals = 0:20) %>%
+pois_mle <- data.frame(lambda_vals = seq(1, 20, length.out = 50)) %>%
   rowwise() %>%
   mutate(log_likelihood = pois_likelihood(y = pois_data, lambda = lambda_vals)) %>%
   ungroup()
 
 #Plot the surface
-qplot(lambda_vals, log_likelihood, data=pois_mle)
+
+pois_mle %>%
+  ggplot(aes(x = lambda_vals, y = log_likelihood)) +
+  geom_vline(
+    data = filter(pois_mle, log_likelihood == log_likelihood %>% max()), 
+    aes(xintercept = lambda_vals), colour = "#117881", size = 1.5) +
+  geom_point(colour = "#FFB06B", size = 2) +
+  hrbrthemes::theme_ft_rc() +
+  scale_x_continuous(breaks = seq(1, 20, 2)) +
+  scale_y_continuous(breaks = seq(-190, -20, 20)) +
+  labs(
+    x = "Lambda",
+    y = "Log Likelihood"
+  )
 ```
 
 MLE
 ```{r}
-pois_mle %>%
-  filter(log_likelihood == max(log_likelihood))
+filter(pois_mle, log_likelihood == log_likelihood %>% max())
 ```
 
 
@@ -119,7 +126,8 @@ df <- data.frame(
 We can simply plot the log-likelihood versus lambda and pick the lambda for which the Likelihood is the highest.
 
 ```{r}
-qplot(lambda_vals, log_likelihood, data = pois_mle)
+pois_mle %>%
+  ggplot(aes(x = lambda_vals, y = log_likelihood)) + geom_point()
 ```
 
 ```{r}
@@ -152,6 +160,7 @@ llh_poisson <- function(lambda, y){
 }
 
 nLL <- function(lambda) sum(stats::dpois(y, lambda, log = TRUE))
+
 fit0 <- mle(nLL, start = list(lambda = 1), nobs = NROW(y))
 ```
 
