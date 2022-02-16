@@ -1,6 +1,8 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
+  html_document: 
+    self_contained: no
 ---
 
 ```{r}
@@ -19,12 +21,15 @@ red_wine <- read_delim(
 )
 
 #write_csv(red_wine, "red_wine.csv")
+#red_wine <- read_csv("red_wine.csv")
 
 white_wine <- read_delim(
   paste0(base_url, white_file), delim = ";", escape_double = FALSE, trim_ws = TRUE
 )
 
 #write_csv(white_wine, "white_wine.csv")
+
+#white_wine <- read_csv("white_wine.csv")
 ```
 
 ```{r}
